@@ -1,6 +1,10 @@
 #ifndef MODEL_H
 #define MODEL_H
 
+#include <string>
+#include <vector>
+#include <iostream>
+
 #include <GL\GL.h>
 #include "GLFW/glfw3.h"
 #include <glm/glm.hpp>
@@ -8,12 +12,8 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
 #include "Mesh.h"
-#include <string>
-#include <fstream>
-#include <sstream>
-#include <iostream>
-#include <vector>
 
 using namespace std;
 
@@ -31,10 +31,19 @@ public:
             meshes[i].Draw();
     }
 
+    void Draw(Shader& shader, glm::mat4* transforms, int count) {
+        for (unsigned int i = 0; i < meshes.size() && i < count; i++) {
+            shader.setMat4("model", transforms[i]);
+            glm::mat3 normalMatrix = glm::transpose(glm::inverse(glm::mat3(transforms[i])));
+            shader.setMat3("normalMatrix", normalMatrix);
+            meshes[i].Draw();
+        }
+    }
+
 private:
     void loadModel(string const& path) {
         Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+        const aiScene* scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
             cout << "ERROR::ASSIMP::" << importer.GetErrorString() << endl;
@@ -61,7 +70,12 @@ private:
         for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
             Vertex vertex;
             vertex.Position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
-            vertex.Normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+            if (mesh->mNormals != nullptr) {
+                vertex.Normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+            }
+            else {
+                vertex.Normal = glm::vec3(0.0f, 0.0f, 0.0f);
+            }
             vertices.push_back(vertex);
         }
 
@@ -76,5 +90,3 @@ private:
 };
 
 #endif
-
-
